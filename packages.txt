@@ -1,0 +1,12 @@
+readxl
+tidyverse
+terra
+geodata
+geobr
+sf
+sp
+caret
+randomForest
+FSA
+forcats
+ggpmisc

@@ -1,0 +1,149 @@
+---
+title: "Extração de dados climáticos de arquivos raster"
+author: "Prof. Dr. Deoclecio e Dra. Maria Gabriella"
+format:
+  html:
+    toc: true
+    toc-location: left
+    fig-width: 5
+    fig-height: 5
+knitr: 
+  opts_chunk: 
+    fig-align: center
+---
+
+```{r}
+#| include: false
+library(knitr)
+opts_knit$set(global.par = TRUE)
+par(mar = c(5, 5, 1, 1))
+```
+
+## Introdução
+
+Este documento apresenta o processo completo para extrair variáveis climáticas a partir de arquivos raster, com base em dados isotópicos (`δ15N`) contendo coordenadas geográficas. Usamos os pacotes `sf` e `terra` para manipulação espacial e `writexl` para exportação.
+
+---
+
+## 1. Configuração inicial
+
+```{r}
+# Limpar ambiente
+rm(list = ls())      
+gc(reset = TRUE)     
+graphics.off()       
+
+# Pacotes necessários
+if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
+library(here)
+
+# Caminho para lista de pacotes
+packages_path <- here("packages.txt")
+if (!file.exists(packages_path)) {
+  stop("Arquivo 'packages.txt' não encontrado! Certifique-se de que está na raiz do projeto.")
+}
+
+# Instalar e carregar pacotes listados
+packages <- readLines(packages_path)
+to_install <- setdiff(packages, rownames(installed.packages()))
+if (length(to_install) > 0) install.packages(to_install)
+
+lapply(packages, require, character.only = TRUE)
+```
+
+---
+
+## 2. Importação de dados isotópicos
+
+```{r}
+# Caminho do arquivo de dados
+dn15_path <- here("dados", "Sena-Souza_soil15n.txt")
+
+# Leitura da tabela
+dn15 <- read.table(dn15_path, header = TRUE)
+
+# Filtrar linhas válidas
+dn15 <- dn15 %>%
+  dplyr::filter(!is.na(x) & !is.na(y) & !is.na(d15n.obs))
+
+```
+
+---
+
+## 3. Conversão para objeto espacial `sf`
+
+```{r}
+# Converter para objeto sf com CRS SIRGAS 2000 (EPSG:4674)
+dn15_proj <- sf::st_as_sf(dn15, coords = c("x", "y"), crs = 4674)
+
+# Visualizar pontos
+plot(dn15_proj[1], pch = 20, col = "black", main = NA, axes = TRUE, graticule = TRUE)
+
+```
+
+---
+
+## 4. Carregamento e empilhamento de rasters
+
+```{r}
+# Listar arquivos raster na pasta
+raster_files <- list.files(path = "raster/", pattern = "\\.tif$", full.names = TRUE)
+
+# Carregar como objetos raster
+raster_list <- lapply(raster_files, terra::rast)
+
+# Empilhar como SpatRaster
+r_stack <- terra::rast(raster_list)
+
+# Nomear camadas com base nos arquivos
+names(r_stack) <- tools::file_path_sans_ext(basename(raster_files))
+
+```
+
+---
+
+## 5. Projeção e extração dos valores climáticos
+
+```{r}
+# Reprojetar raster se necessário
+if (!sf::st_crs(dn15_proj) == sf::st_crs(r_stack)) {
+  r_stack <- terra::project(r_stack, sf::st_crs(dn15_proj)$wkt)
+}
+
+# Extrair valores
+extracted_values <- terra::extract(r_stack, dn15_proj, method = "simple")
+
+# Combinar com dados originais
+dn15_proj <- cbind(dn15_proj, extracted_values[, -1])
+
+```
+
+---
+
+## 6. Exportação do conjunto final
+
+```{r}
+# Extrair coordenadas
+coordinates <- sf::st_coordinates(dn15_proj)
+
+# Converter para data.frame e reorganizar
+dn15_proj_df <- dn15_proj %>%
+  sf::st_drop_geometry() %>%
+  dplyr::mutate(x = coordinates[, 1], y = coordinates[, 2]) %>%
+  dplyr::relocate(x, y)
+
+# Criar pasta (caso não exista)
+if (!dir.exists("dados")) dir.create("dados")
+
+# Exportar para Excel
+writexl::write_xlsx(dn15_proj_df, "dados/dn15_var_clim.xlsx")
+
+# Visualizar primeiras linhas
+head(dn15_proj_df)
+```
+
+---
+
+## Considerações finais
+
+O procedimento descrito neste capítulo é útil para preparar conjuntos de dados georreferenciados com atributos climáticos, os quais podem ser utilizados em análises espaciais ou como variáveis preditoras em modelos de machine learning.

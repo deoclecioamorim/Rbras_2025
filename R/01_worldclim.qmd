@@ -1,0 +1,153 @@
+---
+title: "Extração de dados climáticos do Worldclim"
+author: "Prof. Dr. Deoclecio e Dra. Maria Gabriella"
+format:
+  html:
+    toc: true
+    toc-location: left
+    fig-width: 5
+    fig-height: 5
+knitr: 
+  opts_chunk: 
+    fig-align: center
+---
+
+```{r}
+#| include: false
+
+# Ajuste global para gráficos
+library(knitr)
+opts_knit$set(global.par = TRUE)
+par(mar = c(5, 5, 1, 1))
+
+```
+
+# Introdução
+
+Este relatório Quarto tem como objetivo apresentar um fluxo completo de extração, recorte e análise de dados climáticos globais do [WorldClim](https://www.worldclim.org/), focando na América do Sul.
+
+Os principais passos são:
+
+- Limpeza do ambiente de trabalho;
+- Instalação e carregamento de pacotes necessários;
+- Download e recorte de dados climáticos globais;
+- Reprojeção para o sistema de coordenadas SIRGAS2000 (EPSG:4674);
+- Cálculo de médias anuais;
+- Exportação dos resultados em formato raster TIFF.
+
+---
+
+# 1. Configuração inicial
+
+```{r}
+# Limpar área de trabalho
+rm(list = ls())      
+gc(reset = TRUE)     
+graphics.off()       
+
+# Pacotes necessários
+if (!require(here)) install.packages("here")
+library(here)
+library(utils)
+
+# Verificar existência do arquivo packages.txt
+packages_path <- here::here("packages.txt")
+
+if (!file.exists(packages_path)) {
+  stop("Arquivo 'packages.txt' não encontrado! Certifique-se de que está na raiz do projeto.")
+}
+
+packages <- readLines(packages_path)
+installed <- packages %in% rownames(installed.packages())
+
+if (any(!installed)) {
+  install.packages(packages[!installed], repos = "https://cloud.r-project.org")
+}
+
+lapply(packages, library, character.only = TRUE)
+
+```
+
+---
+
+# 2. Exemplo: Temperatura média global (tavg)
+
+```{r}
+# Baixar e visualizar dados de temperatura média
+tavg_mundo <- geodata::worldclim_global(var = "tavg", res = 10, path = "worldclim")
+print(class(tavg_mundo))
+print(terra::crs(tavg_mundo))
+
+# Definir e aplicar recorte para a América do Sul
+ext_america <- terra::ext(-82, -34, -60, 15)
+tavg_america <- terra::crop(tavg_mundo, ext_america)
+
+# Visualizar camada de um mês
+terra::plot(tavg_america[[1]], main = "Temperatura Média - Mês 1")
+
+# Reprojetar e calcular média
+tavg_america_sirgas <- terra::project(tavg_america, "EPSG:4674")
+tavg_mean <- terra::app(tavg_america_sirgas, mean)
+
+# Visualizar e salvar resultado
+terra::plot(tavg_mean, main = "Temperatura Média Anual")
+if (!dir.exists("raster")) dir.create("raster")
+terra::writeRaster(tavg_mean, filename = "raster/tavg_mean.tif", overwrite = TRUE)
+
+```
+
+---
+
+# 3. Exemplo: Temperatura máxima (tmax)
+
+```{r}
+tmax_mundo <- geodata::worldclim_global(var = "tmax", res = 10, path = "worldclim")
+print(class(tmax_mundo))
+print(terra::crs(tmax_mundo))
+
+tmax_america <- terra::crop(tmax_mundo, ext_america)
+terra::plot(tmax_america[[10]], main = "Temperatura Máxima - Mês 10")
+
+tmax_america_sirgas <- terra::project(tmax_america, "EPSG:4674")
+tmax_mean <- terra::app(tmax_america_sirgas, mean)
+terra::plot(tmax_mean, main = "Temperatura Máxima Anual")
+
+if (!dir.exists("raster")) dir.create("raster")
+terra::writeRaster(tmax_mean, filename = "raster/tmax_mean.tif", overwrite = TRUE)
+
+```
+
+---
+
+# 4. Automatizando o processamento de variáveis
+
+```{r}
+# Lista de variáveis climáticas a processar
+vars <- c("tmax", "tmin", "prec")
+data_path <- "worldclim"
+
+if (!dir.exists("raster")) dir.create("raster")
+
+for (var in vars) {
+  climate_data <- tryCatch(
+    geodata::worldclim_global(var = var, res = 10, path = data_path),
+    error = function(e) {
+      message(paste("Erro ao baixar:", var, "->", e$message))
+      return(NULL)
+    }
+  )
+
+  if (is.null(climate_data)) next
+
+  print(paste("Processando:", var))
+  climate_america <- terra::crop(climate_data, ext_america)
+  climate_america_sirgas <- terra::project(climate_america, "EPSG:4674")
+  climate_mean <- terra::app(climate_america_sirgas, mean)
+  terra::plot(climate_mean, main = paste("Média Anual -", var))
+  output_filename <- paste0("raster/", var, "_mean.tif")
+  terra::writeRaster(climate_mean, filename = output_filename, overwrite = TRUE)
+  print(paste("Arquivo salvo em:", output_filename))
+}
+
+print("Processamento concluído.")
+```

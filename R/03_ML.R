@@ -32,6 +32,16 @@ if(!require(forcats))install.packages("forcats", dep = TRUE)
 if(!require(ggpmisc ))install.packages("ggpmisc", dep = TRUE)
 
 
+set_reproducibility <- function(seed = 1124) {
+  set.seed(seed)
+  RNGkind(kind = "Mersenne-Twister", normal.kind = "Inversion", sample.kind = "Rounding")
+}
+
+# Set reproducibility
+set_reproducibility()
+
+
+
 # Dados-----------------------------------------------------------------------------------
 dn15_var_clim <- read_excel("dados/dn15_var_clim.xlsx", sheet = 1)
 
