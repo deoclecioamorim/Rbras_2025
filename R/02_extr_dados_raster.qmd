@@ -34,21 +34,16 @@ gc(reset = TRUE)
 graphics.off()       
 
 # Pacotes necessários
-if (!requireNamespace("here", quietly = TRUE)) install.packages("here")
-library(here)
+if(!require(readxl))install.packages("readxl", dep = TRUE)
+if(!require(tidyverse))install.packages("tidyverse", dep = TRUE)
+if(!require(terra))install.packages("terra", dep = TRUE)
+if(!require(geodata))install.packages("geodata", dep = TRUE)
+if(!require(geobr))install.packages("geobr", dep = TRUE)
+if(!require(sf))install.packages("sf", dep = TRUE)
+if(!require(sp))install.packages("sp", dep = TRUE)
+if(!require(here))install.packages("here", dep = TRUE)
 
-# Caminho para lista de pacotes
-packages_path <- here("packages.txt")
-if (!file.exists(packages_path)) {
-  stop("Arquivo 'packages.txt' não encontrado! Certifique-se de que está na raiz do projeto.")
-}
 
-# Instalar e carregar pacotes listados
-packages <- readLines(packages_path)
-to_install <- setdiff(packages, rownames(installed.packages()))
-if (length(to_install) > 0) install.packages(to_install)
-
-lapply(packages, require, character.only = TRUE)
 ```
 
 ---
@@ -87,7 +82,7 @@ plot(dn15_proj[1], pch = 20, col = "black", main = NA, axes = TRUE, graticule = 
 
 ```{r}
 # Listar arquivos raster na pasta
-raster_files <- list.files(path = "raster/", pattern = "\\.tif$", full.names = TRUE)
+raster_files <- list.files(path = here("raster"), pattern = "\\.tif$", full.names = TRUE)
 
 # Carregar como objetos raster
 raster_list <- lapply(raster_files, terra::rast)
@@ -133,10 +128,11 @@ dn15_proj_df <- dn15_proj %>%
   dplyr::relocate(x, y)
 
 # Criar pasta (caso não exista)
-if (!dir.exists("dados")) dir.create("dados")
+if (!dir.exists(here("dados"))) dir.create(here("dados"))
+
 
 # Exportar para Excel
-writexl::write_xlsx(dn15_proj_df, "dados/dn15_var_clim.xlsx")
+writexl::write_xlsx(dn15_proj_df, here("dados", "dn15_var_clim.xlsx"))
 
 # Visualizar primeiras linhas
 head(dn15_proj_df)

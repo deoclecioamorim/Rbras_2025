@@ -26,7 +26,7 @@ par(mar = c(5, 5, 1, 1))
 
 Neste módulo, aprenderemos a integrar dados geoespaciais com modelos de **Machine Learning** para gerar mapas preditivos (isoscapes). Como exemplo, utilizaremos o estudo de Sena-Souza et al. (2020) (https://doi.org/10.1002/ecs2.3223 ), que mapeou a variação do **δ¹⁵N em solos da América do Sul**, combinando dados climáticos, topográficos e de uso da terra.
 
-O objetivo do estudo foi mostrar que métodos baseados em **aprendizado de máquina, como Random Forest**, podem ser mais eficientes que técnicas geoestatísticas tradicionais (krigagem) para prever padrões espaciais de isótopos, principalmente em cenários com forte influência de variáveis ambientais.
+O objetivo do estudo foi mostrar que métodos baseados em **aprendizado de máquina, como Random Forest**, podem ser mais eficientes para prever padrões espaciais de isótopos, principalmente em cenários com forte influência de variáveis ambientais.
 
 Durante o exercício, você irá:
 
@@ -48,26 +48,19 @@ rm(list = ls())
 gc(reset = TRUE)     
 graphics.off()       
 
-# Pacotes necessários
-if (!require(here)) install.packages("here")
-library(here)
-library(utils)
+if(!require(readxl))install.packages("readxl", dep = TRUE)
+if(!require(tidyverse))install.packages("tidyverse", dep = TRUE)
+if(!require(terra))install.packages("terra", dep = TRUE)
+if(!require(geodata))install.packages("geodata", dep = TRUE)
+if(!require(geobr))install.packages("geobr", dep = TRUE)
+if(!require(sf))install.packages("sf", dep = TRUE)
+if(!require(sp))install.packages("sp", dep = TRUE)
+if(!require(here))install.packages("here", dep = TRUE)
+if(!require(caret))install.packages("caret", dep = TRUE)
+if(!require(randomForest))install.packages("randomForest", dep = TRUE)
+if(!require(ranger))install.packages("ranger", dep = TRUE)
+if(!require(VSURF))install.packages("VSURF", dep = TRUE)
 
-# Verificar existência do arquivo packages.txt
-packages_path <- here::here("packages.txt")
-
-if (!file.exists(packages_path)) {
-  stop("Arquivo 'packages.txt' não encontrado! Certifique-se de que está na raiz do projeto.")
-}
-
-packages <- readLines(packages_path)
-installed <- packages %in% rownames(installed.packages())
-
-if (any(!installed)) {
-  install.packages(packages[!installed], repos = "https://cloud.r-project.org")
-}
-
-lapply(packages, library, character.only = TRUE)
 
 ```
 
@@ -91,8 +84,7 @@ para predizer o δ¹⁵N da América do Sul.
 
 ```{r}
 
-dn15_var_clim <- read_excel("dados/dn15_var_clim.xlsx", sheet = 1) 
-
+dn15_var_clim <- readxl::read_excel(here::here("dados", "dn15_var_clim.xlsx"), sheet = 1)
 head(dn15_var_clim) #leitura das primeiras 6 linhas
 str(dn15_var_clim) #Estrutura dos dados
 
@@ -429,9 +421,9 @@ Obtemos um conjunto de métricas ligeiramente diferente aqui, mas elas são muit
 
 ## Compreendendo o modelo
 
-Entender os modelos de ML (também chamados de *ML interpretável*) também é um tema vasto e em constante desenvolvimento, mas existem algumas ferramentas simples que podem nos ajudar a começar a entender como nosso modelo está se comportando. Vamos revisar brevemente duas delas.
+Entender os modelos de ML (também chamados de *ML interpretável*) também é um tema vasto e em constante desenvolvimento, mas existem algumas ferramentas simples que podem nos ajudar a começar a entender como nosso modelo está se comportando. 
 
-A primeira é o gráfico de importância das variáveis, que mostra basicamente o que seu nome sugere.
+Veja o gráfico de importância das variáveis, que mostra basicamente o que seu nome sugere.
 
 
 
@@ -475,7 +467,7 @@ a $\pm$1 desvio padrão para uma distribuição normal.
 
 ```{r predEspacial}
 # Listar todos os arquivos raster na pasta 'raster/' 
-raster_files <- list.files(path = 'raster/', pattern = '\\.tif$', full.names = TRUE)  
+raster_files <- list.files(path = here("raster"), pattern = '\\.tif$', full.names = TRUE)  
 
 # Carregar todos os rasters em uma lista 
 # terra ->> para carregar cada arquivo raster
@@ -512,18 +504,16 @@ isoscape$sd <- (isoscape$ci.84 - isoscape$ci.16) / 2
 
 
 # Verificar e criar diretório para salvar os rasters, se não existir
-if (!dir.exists("isoscape")) {
-  dir.create("isoscape")
-}
+if (!dir.exists(here("isoscape"))) dir.create(here("isoscape"))
 
 #Exportando raster
-terra::writeRaster(isoscape, filename = 'isoscape/isoscape_dn15_ML.tif', overwrite = TRUE)
+terra::writeRaster(isoscape, filename = here("isoscape", "isoscape_dn15.tif"), overwrite = TRUE)
 
 ```
 
 ---
 
-
+Vejamos um plot simples da Isoscape gerada pela nossa predição.
 
 ```{r plotIsoscape}
 #| layout-ncol: 2
