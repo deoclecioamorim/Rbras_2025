@@ -42,12 +42,13 @@ Essa abordagem será a base para aplicações futuras em rastreabilidade agríco
 
 # 1. Configuração inicial
 
-```{r}
+```{r config}
 # Limpar área de trabalho
 rm(list = ls())      
 gc(reset = TRUE)     
 graphics.off()       
 
+#Pacotes necessários
 if(!require(readxl))install.packages("readxl", dep = TRUE)
 if(!require(tidyverse))install.packages("tidyverse", dep = TRUE)
 if(!require(terra))install.packages("terra", dep = TRUE)
@@ -66,24 +67,25 @@ if(!require(VSURF))install.packages("VSURF", dep = TRUE)
 
 # 2. Reprodutibilidade 
 
+A reprodutibilidade é um princípio fundamental da ciência, pois garante que os resultados obtidos em uma pesquisa possam ser verificados e replicados por outros pesquisadores ou em futuras análises. Assegurar que os procedimentos sejam replicáveis aumenta a transparência, a credibilidade dos dados e fortalece a robustez das conclusões.
 
-```{r}
+
+```{r seed}
 set_reproducibility <- function(seed = 1350) {
   set.seed(seed)
   RNGkind(kind = "Mersenne-Twister", normal.kind = "Inversion", sample.kind = "Rounding")
 }
 
-# Set reproducibility
+# Fixando a reprodutibilidade
 set_reproducibility()
 ```
 
 # 3. Carregando o conjunto de dados 
 
-Nessa etapa, o conjunto de dados gerados no módulo II será utilizado como covariáveis 
-para predizer o δ¹⁵N da América do Sul.
+Nessa etapa, o conjunto de dados gerado no Módulo II será utilizado como 
+covariáveis para a predição do δ¹⁵N na América do Sul.
 
-```{r}
-
+```{r importacao_dados}
 dn15_var_clim <- readxl::read_excel(here::here("dados", "dn15_var_clim.xlsx"), sheet = 1)
 head(dn15_var_clim) #leitura das primeiras 6 linhas
 str(dn15_var_clim) #Estrutura dos dados
@@ -93,9 +95,13 @@ str(dn15_var_clim) #Estrutura dos dados
 
 # 4. Preparação dos dados
 
-Vamos definir a variável resposta e covariáveis.
+Vamos definir a variável resposta e as covariáveis que serão utilizadas na modelagem.
 
-```{r}
+```{r resp_covar}
+
+# Transformar tibble em SpatVector (definindo x e y como coordenadas)
+sites <- vect(as.data.frame(dn15_var_clim), geom = c("x", "y"), crs = "EPSG:4674")
+
 #Retirando coordenadas
 dn15_var_clim <- dn15_var_clim %>% dplyr::select(-x, -y)
 
@@ -116,8 +122,6 @@ if (anyNA(preditoras)) {
 
 ```
 
-
-
 # 2 Ajuste dos modelos
 
 ## Modelo Random Forest
@@ -136,7 +140,7 @@ Além dessa estrutura básica, o Random Forest (RF) emprega vários métodos que
 tornam um método robusto e amplamente útil. Entre eles está o uso do *bagging*,
 que envolve repetir o processo de ajuste da árvore várias vezes usando subconjuntos 
 aleatórios dos dados de treinamento para desenvolver um conjunto de muitas árvores 
-(a “floresta”). Além disso, a RF também aplica um procedimento de bagging a cada 
+(a “floresta”). Além disso, a RF também aplica um procedimento de **bagging** a cada 
 nó de decisão em uma árvore — em vez de escolher a decisão mais informativa entre 
 todas as características do modelo, um subconjunto aleatório de características 
 é escolhido e avaliado para selecionar a regra de decisão para cada nó em cada
@@ -146,10 +150,16 @@ Forest menos suscetível ao sobreajuste do que alguns outros métodos de ML.
 
 
 ```{r rf1}
-
+#Nomes das preditoras
 pred.names<- names(preditoras)
 
+#Definindo a formula do modelo de regressão
 formula_rf1 <- as.formula(paste("d15n.obs ~", paste(pred.names, collapse = " + ")))
+formula_rf1
+
+#Modelo RF com o pacotes ramdomForest
+#Fixando a reprodutibilidade
+set_reproducibility()
 
 rf.mod1  <- randomForest(
   formula_rf1,
@@ -163,8 +173,8 @@ rf.mod1
 
 ```
 
-Os resultados do modelo RF com todas as variáveis sugere que mais de 62% da
-variância é explicada.
+Os resultados do modelo RF com todas as variáveis sugere que mais de 59% da
+variância é explicada. O valor de MSE ficou em torno de 3.89.
 
 Vamos dar uma olhada rápida no ajuste do modelo:
 
@@ -210,7 +220,7 @@ utilizar o algoritmo VSURF.
 preditoras_matrix <- as.matrix(preditoras)
 
 # Rodando VSURF para seleção de variáveis
-# Set reproducibility
+# Fixando a reprodutibilidade
 set_reproducibility()
 
 vsurf_result <- VSURF::VSURF(preditoras_matrix, resposta, 
@@ -243,12 +253,20 @@ print(pred_vars)
 
 ---
 
+Observe que o algoritmo VSURF eliminou a variável `tmax_mean`, indicando que ela não contribui de forma significativa para o poder preditivo do modelo. 
+
+Dessa forma, o próximo modelo será ajustado considerando apenas as variáveis
+selecionadas no objeto `pred_vars`.
+
+
 
 ```{r rfVSURF}
 
 #Construindo a formula
 formula_rf2 <- as.formula(paste("d15n.obs ~", paste(pred_vars, collapse = " + ")))
+formula_rf2
 
+#Fixando a reprodutibidade
 set_reproducibility()
 
 rf.mod2 <- randomForest(
@@ -266,7 +284,10 @@ plot(rf.mod2, main = "OOB Error vs Number of Trees")
 
 ```
 
-## Tuning
+Os resultados entre os modelos de Random Forest (RF), com e sem a variável `tmax_mean`, não apresentam diferenças significativas. Isso confirma que, de fato, essa variável não contribui de maneira relevante para o poder preditivo do modelo. Além disso, observa-se que não é necessário mais de 500 arvores para ajustar o modelo RF neste exemplo.
+
+
+## Ajuste de Hiperparâmetros
 
 O desenvolvimento de modelos de ML e IA geralmente envolve a tomada de decisões
 sobre os detalhes da estrutura do modelo e/ou os procedimentos usados para
@@ -333,7 +354,7 @@ simples de divisão de dados é fácil de realizar.
 
 ```{r splitData}
 
-# Set reproducibility
+# Fixando a reprodutibilidade
 set_reproducibility()
 partition <- caret::createDataPartition(dn15_var_clim$d15n.obs, p = 0.8, list = FALSE)
 treino <- dn15_var_clim[partition, ]
@@ -341,6 +362,7 @@ teste <- dn15_var_clim[-partition, ]
 
 # AJustando o modelo com dados de treino
 rf.train <-  randomForest(formula_rf2, data = treino, ntree = 500)
+rf.train
 
 # Data frame Observado x Predito
 dados_plot2 <- data.frame(
@@ -384,9 +406,8 @@ ggplot(dados_plot2, aes(x = Observado, y = Predito)) +
 ```
 
 
-O resultado com o cojunto de teste não é muito diferente da estimativa OOB
-mostrada acima. Mas isso se baseia apenas em uma divisão (aleatória) dos dados
-em partes de teste e treinamento. Para aprimorar isso, pode-se repetir o processo 
+O resultado com o cojunto de teste mostrou-se muito diferente da estimativa OOB
+mostrada acima, ou seja, é sempre importante buscar uma validação robusta para o modelo elaborado. No entanto, a validação anterior  se baseia apenas em uma divisão (aleatória) dos dados em partes de teste e treinamento. Para aprimorar isso, pode-se repetir o processo 
 acima várias vezes. Não seria difícil codificar isso sozinho, mas acontece que 
 o `caret` está bem configurado para executar esse tipo de análise para você. 
 O código abaixo é uma ligeira modificação do que usamos acima e usa o
@@ -400,7 +421,7 @@ Leave-Group-Out CV (também conhecido como Monte Carlo CV).
 # Leave-Group-Out CV (também conhecido como Monte Carlo CV).
 fitControl <- caret::trainControl(method = "LGOCV", number = 10, p = 0.8)
 
-# Set reproducibility
+# Fixando a reprodutibidade
 set_reproducibility()
 rf.mod3 <-caret::train(formula_rf2,
                   data= dn15_var_clim, method="rf",
@@ -450,18 +471,13 @@ varimport
 
 ```
 
+Observa-se que a variável ``prec_mean`` tem o maior impacto para δ¹⁵N no solo 
+para região de estudo.
+
+
 # Isoscape
 
-Finalmente, utilizaremos a nossa melhor predição para construir um mapa espacial
-do **δ¹⁵N em solos da América do Sul**.  Os modelos CART (e os modelos ML/AI em geral)
-não oferecem uma abordagem analítica simples para estimar o erro de previsão com base 
-na incerteza dos parâmetros (como fazem os modelos baseados em krigagem). Várias
-soluções para RF surgiram. A que usaremos (florestas de regressão quantílica) 
-aproveita as diferenças nas previsões entre as árvores para calcular uma distribuição 
-de previsões. A aplicação do método exigirá que ajustemos um novo modelo de floresta 
-de regressão quantílica e, em seguida, o apliquemos para prever quantis específicos 
-da distribuição de previsão. Escolheremos os percentis 16 e 84, pois correspondem 
-a $\pm$1 desvio padrão para uma distribuição normal.
+Nessa etapa, vamos recuperar os arquivos raster gerados na primeira etapa e criar um único raster multicamada, que será utilizado para realizar a predição espacial com a função `predict` do pacote `terra`.
 
 ---
 
@@ -483,7 +499,23 @@ names(r_stack) <- basename(raster_files) %>% tools::file_path_sans_ext()
 print(names(r_stack))  
 class(r_stack)
 
+```
 
+Finalmente, utilizaremos a nossa melhor predição para construir um mapa espacial
+do **δ¹⁵N em solos da América do Sul**.  Os modelos CART (e os modelos ML/AI em geral)
+não oferecem uma abordagem analítica simples para estimar o erro de previsão com base 
+na incerteza dos parâmetros (como fazem os modelos baseados em krigagem). Várias
+soluções para RF surgiram. A que usaremos (florestas de regressão quantílica) 
+aproveita as diferenças nas previsões entre as árvores para calcular uma distribuição 
+de previsões. A aplicação do método exigirá que ajustemos um novo modelo de floresta 
+de regressão quantílica e, em seguida, o apliquemos para prever quantis específicos 
+da distribuição de previsão. Escolheremos os percentis 16 e 84, pois correspondem 
+a $\pm$1 desvio padrão para uma distribuição normal.
+
+
+```{r isoscape}
+#Predição
+isoscape <- terra::predict(r_stack, rf.mod3, na.rm = TRUE)
 
 # Usando o pacote "ranger".
 # Set reproducibility
@@ -492,14 +524,13 @@ mod.qrf <- ranger::ranger(formula_rf2, data=dn15_var_clim, num.trees = 500,
                    mtry = 2, quantreg = TRUE)
 mod.qrf
 
-
-#Predição
-isoscape <- terra::predict(r_stack, rf.mod3, na.rm = TRUE)
+#Quantis
 isoscape$ci.16 <- terra::predict(r_stack, mod.qrf, type = "quantiles", quantiles = 0.16,
                         na.rm = TRUE)
 isoscape$ci.84 <- terra::predict(r_stack, mod.qrf, type = "quantiles", quantiles = 0.84,
                         na.rm = TRUE)
 
+#SD
 isoscape$sd <- (isoscape$ci.84 - isoscape$ci.16) / 2
 
 
@@ -508,7 +539,6 @@ if (!dir.exists(here("isoscape"))) dir.create(here("isoscape"))
 
 #Exportando raster
 terra::writeRaster(isoscape, filename = here("isoscape", "isoscape_dn15.tif"), overwrite = TRUE)
-
 ```
 
 ---
@@ -516,10 +546,18 @@ terra::writeRaster(isoscape, filename = here("isoscape", "isoscape_dn15.tif"), o
 Vejamos um plot simples da Isoscape gerada pela nossa predição.
 
 ```{r plotIsoscape}
-#| layout-ncol: 2
 # Visualizar a isoscape
 terra::plot(isoscape[[1]], main = "δ¹⁵N em solos da América do Sul")
+# Adicionar os pontos amostrais
+points(sites, pch = 21, bg = "black", cex = 0.8)
+
+```
+
+```{r plotIsoscapeSD}
+# Visualizar a isoscape
 terra::plot(isoscape$sd, main = "SD")
+# Adicionar os pontos amostrais
+points(sites, pch = 21, bg = "black", cex = 0.8)
 
 ```
 

@@ -122,7 +122,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="introdução" class="level2">
 <h2 class="anchored" data-anchor-id="introdução">Introdução</h2>
-<p>Este documento apresenta o processo completo para extrair variáveis climáticas a partir de arquivos raster, com base em dados isotópicos (<code>δ15N</code>) contendo coordenadas geográficas. Usamos os pacotes <code>sf</code> e <code>terra</code> para manipulação espacial e <code>writexl</code> para exportação.</p>
+<p>Este documento apresenta o processo para extrair variáveis climáticas a partir de arquivos raster, com base em dados isotópicos (<code>δ15N</code>) contendo coordenadas geográficas derivados do estudo de Sena-Souza et al.&nbsp;(2020)(https://doi.org/10.1002/ecs2.3223). Usamos os pacotes <code>sf</code> e <code>terra</code> para manipulação espacial e <code>writexl</code> para exportação.</p>
 <hr>
 </section>
 <section id="configuração-inicial" class="level2">
@@ -133,8 +133,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">gc</span>(<span class="at">reset =</span> <span class="cn">TRUE</span>)     </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>          used (Mb) gc trigger (Mb) max used (Mb)
-Ncells  607481 32.5    1385268   74   607481 32.5
-Vcells 1104950  8.5    8388608   64  1104950  8.5</code></pre>
+Ncells  607508 32.5    1385025   74   607508 32.5
+Vcells 1105662  8.5    8388608   64  1105662  8.5</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">graphics.off</span>()       </span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -224,22 +224,34 @@ Linking to GEOS 3.13.1, GDAL 3.10.2, PROJ 9.5.1; sf_use_s2() is TRUE</code></pre
 <span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Filtrar linhas válidas</span></span>
 <span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>dn15 <span class="ot">&lt;-</span> dn15 <span class="sc">%&gt;%</span></span>
-<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(x) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(y) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(d15n.obs))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(x) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(y) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(d15n.obs))</span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(dn15)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>          y         x d15n.obs
+1  -2.81667 -47.35000    10.72
+2  -3.30000 -47.16667     8.76
+3  -2.50000 -60.16667     8.60
+4  -9.18333 -63.11667    10.05
+5 -12.86667 -60.05000    11.18
+6 -10.28333 -62.86667     9.84</code></pre>
+</div>
 </div>
 <hr>
 </section>
 <section id="conversão-para-objeto-espacial-sf" class="level2">
 <h2 class="anchored" data-anchor-id="conversão-para-objeto-espacial-sf">3. Conversão para objeto espacial <code>sf</code></h2>
+<p>Nessa etapa, é importante garantir que os dados estejam na mesma projeção dos arquivos raster, a fim de minimizar os erros durante o processo de extração.</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Converter para objeto sf com CRS SIRGAS 2000 (EPSG:4674)</span></span>
-<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>dn15_proj <span class="ot">&lt;-</span> sf<span class="sc">::</span><span class="fu">st_as_sf</span>(dn15, <span class="at">coords =</span> <span class="fu">c</span>(<span class="st">"x"</span>, <span class="st">"y"</span>), <span class="at">crs =</span> <span class="dv">4674</span>)</span>
-<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualizar pontos</span></span>
-<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(dn15_proj[<span class="dv">1</span>], <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">col =</span> <span class="st">"black"</span>, <span class="at">main =</span> <span class="cn">NA</span>, <span class="at">axes =</span> <span class="cn">TRUE</span>, <span class="at">graticule =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Converter para objeto sf com CRS SIRGAS 2000 (EPSG:4674)</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>dn15_proj <span class="ot">&lt;-</span> sf<span class="sc">::</span><span class="fu">st_as_sf</span>(dn15, <span class="at">coords =</span> <span class="fu">c</span>(<span class="st">"x"</span>, <span class="st">"y"</span>), <span class="at">crs =</span> <span class="dv">4674</span>)</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualizar pontos</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(dn15_proj[<span class="dv">1</span>], <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">col =</span> <span class="st">"black"</span>, <span class="at">main =</span> <span class="cn">NA</span>, <span class="at">axes =</span> <span class="cn">TRUE</span>, <span class="at">graticule =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="02_extr_dados_raster_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="480"></p>
+<p><img src="02_extr_dados_raster_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="480"></p>
 </figure>
 </div>
 </div>
@@ -248,66 +260,75 @@ Linking to GEOS 3.13.1, GDAL 3.10.2, PROJ 9.5.1; sf_use_s2() is TRUE</code></pre
 </section>
 <section id="carregamento-e-empilhamento-de-rasters" class="level2">
 <h2 class="anchored" data-anchor-id="carregamento-e-empilhamento-de-rasters">4. Carregamento e empilhamento de rasters</h2>
+<p>Lembre-se de que agora vamos utilizar os arquivos raster gerados na etapa anterior, os quais foram armazenados na pasta <strong>raster</strong>.</p>
+<p>O processo a seguir irá criar um único raster multicamada utilizando a função <code>rast</code> do pacote <code>terra</code>.</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Listar arquivos raster na pasta</span></span>
-<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>raster_files <span class="ot">&lt;-</span> <span class="fu">list.files</span>(<span class="at">path =</span> <span class="fu">here</span>(<span class="st">"raster"</span>), <span class="at">pattern =</span> <span class="st">"</span><span class="sc">\\</span><span class="st">.tif$"</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Carregar como objetos raster</span></span>
-<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>raster_list <span class="ot">&lt;-</span> <span class="fu">lapply</span>(raster_files, terra<span class="sc">::</span>rast)</span>
-<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Empilhar como SpatRaster</span></span>
-<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>r_stack <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">rast</span>(raster_list)</span>
-<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Nomear camadas com base nos arquivos</span></span>
-<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(r_stack) <span class="ot">&lt;-</span> tools<span class="sc">::</span><span class="fu">file_path_sans_ext</span>(<span class="fu">basename</span>(raster_files))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Listar arquivos raster na pasta</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>raster_files <span class="ot">&lt;-</span> <span class="fu">list.files</span>(<span class="at">path =</span> <span class="fu">here</span>(<span class="st">"raster"</span>), <span class="at">pattern =</span> <span class="st">"</span><span class="sc">\\</span><span class="st">.tif$"</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Carregar como objetos raster</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>raster_list <span class="ot">&lt;-</span> <span class="fu">lapply</span>(raster_files, terra<span class="sc">::</span>rast)</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Empilhar como SpatRaster</span></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>r_stack <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">rast</span>(raster_list)</span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Nomear camadas com base nos arquivos</span></span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(r_stack) <span class="ot">&lt;-</span> tools<span class="sc">::</span><span class="fu">file_path_sans_ext</span>(<span class="fu">basename</span>(raster_files))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <hr>
 </section>
 <section id="projeção-e-extração-dos-valores-climáticos" class="level2">
 <h2 class="anchored" data-anchor-id="projeção-e-extração-dos-valores-climáticos">5. Projeção e extração dos valores climáticos</h2>
+<p>Com o raster multicamada obtido, podemos realizar a extração dos valores climáticos de acordo com as coordenadas de interesse.</p>
+<p>A função <code>extract</code>, do pacote <code>terra</code>, oferece dois métodos para extrair valores em pontos: <strong>“simples”</strong> e <strong>“bilinear”</strong>.</p>
+<ul>
+<li>No modo <strong>simples</strong>, é retornado o valor da célula raster em que o ponto se encontra.</li>
+<li>No modo <strong>bilinear</strong>, o valor retornado é uma interpolação bilinear calculada a partir das quatro células raster mais próximas do ponto.</li>
+</ul>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Reprojetar raster se necessário</span></span>
-<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span>sf<span class="sc">::</span><span class="fu">st_crs</span>(dn15_proj) <span class="sc">==</span> sf<span class="sc">::</span><span class="fu">st_crs</span>(r_stack)) {</span>
-<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>  r_stack <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">project</span>(r_stack, sf<span class="sc">::</span><span class="fu">st_crs</span>(dn15_proj)<span class="sc">$</span>wkt)</span>
-<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Extrair valores</span></span>
-<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>extracted_values <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">extract</span>(r_stack, dn15_proj, <span class="at">method =</span> <span class="st">"simple"</span>)</span>
-<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Combinar com dados originais</span></span>
-<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>dn15_proj <span class="ot">&lt;-</span> <span class="fu">cbind</span>(dn15_proj, extracted_values[, <span class="sc">-</span><span class="dv">1</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Reprojetar raster se necessário</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span>sf<span class="sc">::</span><span class="fu">st_crs</span>(dn15_proj) <span class="sc">==</span> sf<span class="sc">::</span><span class="fu">st_crs</span>(r_stack)) {</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  r_stack <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">project</span>(r_stack, sf<span class="sc">::</span><span class="fu">st_crs</span>(dn15_proj)<span class="sc">$</span>wkt)</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Extrair valores</span></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>extracted_values <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">extract</span>(r_stack, dn15_proj, <span class="at">method =</span> <span class="st">"bilinear"</span>)</span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Combinar com dados originais</span></span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a>dn15_proj <span class="ot">&lt;-</span> <span class="fu">cbind</span>(dn15_proj, extracted_values[, <span class="sc">-</span><span class="dv">1</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <hr>
 </section>
 <section id="exportação-do-conjunto-final" class="level2">
 <h2 class="anchored" data-anchor-id="exportação-do-conjunto-final">6. Exportação do conjunto final</h2>
+<p>A etapa final consiste em exportar a planilha de dados e dar início ao processo de modelagem, com a implementação dos modelos estatísticos.</p>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Extrair coordenadas</span></span>
-<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>coordinates <span class="ot">&lt;-</span> sf<span class="sc">::</span><span class="fu">st_coordinates</span>(dn15_proj)</span>
-<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Converter para data.frame e reorganizar</span></span>
-<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>dn15_proj_df <span class="ot">&lt;-</span> dn15_proj <span class="sc">%&gt;%</span></span>
-<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>  sf<span class="sc">::</span><span class="fu">st_drop_geometry</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">x =</span> coordinates[, <span class="dv">1</span>], <span class="at">y =</span> coordinates[, <span class="dv">2</span>]) <span class="sc">%&gt;%</span></span>
-<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">relocate</span>(x, y)</span>
-<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Criar pasta (caso não exista)</span></span>
-<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">dir.exists</span>(<span class="fu">here</span>(<span class="st">"dados"</span>))) <span class="fu">dir.create</span>(<span class="fu">here</span>(<span class="st">"dados"</span>))</span>
-<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Exportar para Excel</span></span>
-<span id="cb29-15"><a href="#cb29-15" aria-hidden="true" tabindex="-1"></a>writexl<span class="sc">::</span><span class="fu">write_xlsx</span>(dn15_proj_df, <span class="fu">here</span>(<span class="st">"dados"</span>, <span class="st">"dn15_var_clim.xlsx"</span>))</span>
-<span id="cb29-16"><a href="#cb29-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb29-17"><a href="#cb29-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualizar primeiras linhas</span></span>
-<span id="cb29-18"><a href="#cb29-18" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(dn15_proj_df)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Extrair coordenadas</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>coordinates <span class="ot">&lt;-</span> sf<span class="sc">::</span><span class="fu">st_coordinates</span>(dn15_proj)</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Converter para data.frame e reorganizar</span></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>dn15_proj_df <span class="ot">&lt;-</span> dn15_proj <span class="sc">%&gt;%</span></span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>  sf<span class="sc">::</span><span class="fu">st_drop_geometry</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">x =</span> coordinates[, <span class="dv">1</span>], <span class="at">y =</span> coordinates[, <span class="dv">2</span>]) <span class="sc">%&gt;%</span></span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">relocate</span>(x, y)</span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Criar pasta (caso não exista)</span></span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">dir.exists</span>(<span class="fu">here</span>(<span class="st">"dados"</span>))) <span class="fu">dir.create</span>(<span class="fu">here</span>(<span class="st">"dados"</span>))</span>
+<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-14"><a href="#cb30-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Exportar para Excel</span></span>
+<span id="cb30-15"><a href="#cb30-15" aria-hidden="true" tabindex="-1"></a>writexl<span class="sc">::</span><span class="fu">write_xlsx</span>(dn15_proj_df, <span class="fu">here</span>(<span class="st">"dados"</span>, <span class="st">"dn15_var_clim.xlsx"</span>))</span>
+<span id="cb30-16"><a href="#cb30-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-17"><a href="#cb30-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualizar primeiras linhas</span></span>
+<span id="cb30-18"><a href="#cb30-18" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(dn15_proj_df)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>          x         y d15n.obs prec_mean tavg_mean tmax_mean tmin_mean
-1 -47.35000  -2.81667    10.72  167.1667  26.00423  30.70931  21.30000
-2 -47.16667  -3.30000     8.76  157.0000  25.78002  30.64346  20.91494
-3 -60.16667  -2.50000     8.60  199.0833  26.48438  30.53898  22.43010
-4 -63.11667  -9.18333    10.05  194.0000  25.32162  30.96633  19.67488
-5 -60.05000 -12.86667    11.18  165.3333  23.52750  30.02400  17.03106
-6 -62.86667 -10.28333     9.84  167.0000  25.11808  31.17617  19.05700</code></pre>
+1 -47.35000  -2.81667    10.72  165.9799  25.97341  30.71642  21.23086
+2 -47.16667  -3.30000     8.76  155.0750  25.88919  30.77514  21.00253
+3 -60.16667  -2.50000     8.60  198.1458  26.45063  30.49180  22.41029
+4 -63.11667  -9.18333    10.05  193.7466  25.33336  30.95077  19.71593
+5 -60.05000 -12.86667    11.18  165.8150  23.55513  30.07492  17.03572
+6 -62.86667 -10.28333     9.84  166.4517  25.03717  31.12633  18.94639</code></pre>
 </div>
 </div>
 <hr>

@@ -39,7 +39,7 @@ Os principais passos são:
 
 # 1. Configuração inicial
 
-```{r}
+```{r pacotes}
 # Limpar área de trabalho
 rm(list = ls())      
 gc(reset = TRUE)     
@@ -62,19 +62,42 @@ if(!require(here))install.packages("here", dep = TRUE)
 
 # 2. Exemplo: Temperatura média global (tavg)
 
-```{r}
-# Baixar e visualizar dados de temperatura média
+Neste exemplo, vamos obter os arquivos raster de temperatura média para o mundo, na resolução de 10 minutos. Outras resoluções podem ser facilmente obtidas alterando o argumento `res`. 
+
+O argumento `var` oferece várias opções de variáveis climáticas, conforme a seguir:
+
+- `"tmin"` — Temperatura mínima
+- `"tmax"` — Temperatura máxima
+- `"tavg"` — Temperatura média
+- `"prec"` — Precipitação
+- `"wind"` — Velocidade do vento
+- `"vapr"` — Pressão de vapor
+- `"bio"` — Variáveis bioclimáticas
+
+
+```{r tavg}
+# Baixando temperatura média global com resolução de 10 minutos
 tavg_mundo <- geodata::worldclim_global(var = "tavg", res = 10, path = here("worldclim"))
 print(class(tavg_mundo))
 print(terra::crs(tavg_mundo))
 
+```
+
+No estudo de caso, estamos trabalhando apenas com a América do Sul, portanto, faz sentido utilizarmos apenas um recorte específico.
+
+```{r mascara}
 # Definir e aplicar recorte para a América do Sul
 ext_america <- terra::ext(-82, -34, -60, 15)
 tavg_america <- terra::crop(tavg_mundo, ext_america)
 
 # Visualizar camada de um mês
-terra::plot(tavg_america[[1]], main = "Temperatura Média - Mês 1")
+terra::plot(tavg_america[[1]], main = "Janeiro")
+```
 
+Finalmente, recomenda-se corrigir a projeção e realizar as operações geoespaciais com os arquivos raster.
+
+
+```{r projecao}
 # Reprojetar e calcular média
 tavg_america_sirgas <- terra::project(tavg_america, "EPSG:4674")
 tavg_mean <- terra::app(tavg_america_sirgas, mean)
@@ -89,32 +112,36 @@ terra::writeRaster(tavg_mean, filename = here("raster", "tavg_mean.tif"), overwr
 
 ```
 
----
-
 # 3. Exemplo: Temperatura máxima (tmax)
 
-```{r}
+Aqui, realizamos as mesmas operações para obter a temperatura máxima.
+
+
+```{r tmax}
 tmax_mundo <- geodata::worldclim_global(var = "tmax", res = 10, path = here("worldclim"))
 print(class(tmax_mundo))
 print(terra::crs(tmax_mundo))
 
 tmax_america <- terra::crop(tmax_mundo, ext_america)
-terra::plot(tmax_america[[10]], main = "Temperatura Máxima - Mês 10")
+terra::plot(tmax_america[[10]], main = "Temperatura Máxima: Outubro")
 
 tmax_america_sirgas <- terra::project(tmax_america, "EPSG:4674")
 tmax_mean <- terra::app(tmax_america_sirgas, mean)
-terra::plot(tmax_mean, main = "Temperatura Máxima Anual")
+terra::plot(tmax_mean, main = "Temperatura Máxima Anual Média")
 
 #Salvar
 terra::writeRaster(tmax_mean, filename = here("raster", "tmax_mean.tif"), overwrite = TRUE)
 
 ```
+No banco de dados [WorldClim](https://www.worldclim.org/), existem diversas variáveis climáticas disponíveis. Surge, então, a pergunta: **será que existe uma maneira de trabalhar com múltiplas variáveis ao mesmo tempo?**
+
+A seguir, apresenta-se um bloco de código que realiza essa tarefa. Com certeza, existem formas mais elegantes e eficientes de implementar essa rotina, mas isso exigiria um pouco mais de criatividade e imaginação.
 
 ---
 
 # 4. Automatizando o processamento de variáveis
 
-```{r}
+```{r extr_auto}
 
 # Lista de variáveis climáticas a processar
 vars <- c("tmax", "tmin", "prec")
@@ -151,9 +178,6 @@ for (var in vars) {
   
   message(paste("Arquivo salvo em:", output_filename))
 }
-
-
-
 
 
 ```

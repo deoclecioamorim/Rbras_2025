@@ -139,8 +139,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">gc</span>(<span class="at">reset =</span> <span class="cn">TRUE</span>)     </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>          used (Mb) gc trigger (Mb) max used (Mb)
-Ncells  607433 32.5    1384177   74   607433 32.5
-Vcells 1105171  8.5    8388608   64  1105171  8.5</code></pre>
+Ncells  607525 32.5    1384865   74   607525 32.5
+Vcells 1106083  8.5    8388608   64  1106083  8.5</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">graphics.off</span>()       </span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -221,8 +221,19 @@ Linking to GEOS 3.13.1, GDAL 3.10.2, PROJ 9.5.1; sf_use_s2() is TRUE</code></pre
 </section>
 <section id="exemplo-temperatura-média-global-tavg" class="level1">
 <h1>2. Exemplo: Temperatura média global (tavg)</h1>
+<p>Neste exemplo, vamos obter os arquivos raster de temperatura média para o mundo, na resolução de 10 minutos. Outras resoluções podem ser facilmente obtidas alterando o argumento <code>res</code>.</p>
+<p>O argumento <code>var</code> oferece várias opções de variáveis climáticas, conforme a seguir:</p>
+<ul>
+<li><code>"tmin"</code> — Temperatura mínima</li>
+<li><code>"tmax"</code> — Temperatura máxima</li>
+<li><code>"tavg"</code> — Temperatura média</li>
+<li><code>"prec"</code> — Precipitação</li>
+<li><code>"wind"</code> — Velocidade do vento</li>
+<li><code>"vapr"</code> — Pressão de vapor</li>
+<li><code>"bio"</code> — Variáveis bioclimáticas</li>
+</ul>
 <div class="cell" data-layout-align="center">
-<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Baixar e visualizar dados de temperatura média</span></span>
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Baixando temperatura média global com resolução de 10 minutos</span></span>
 <span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>tavg_mundo <span class="ot">&lt;-</span> geodata<span class="sc">::</span><span class="fu">worldclim_global</span>(<span class="at">var =</span> <span class="st">"tavg"</span>, <span class="at">res =</span> <span class="dv">10</span>, <span class="at">path =</span> <span class="fu">here</span>(<span class="st">"worldclim"</span>))</span>
 <span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">class</span>(tavg_mundo))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
@@ -234,19 +245,25 @@ attr(,"package")
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] "GEOGCRS[\"WGS 84\",\n    ENSEMBLE[\"World Geodetic System 1984 ensemble\",\n        MEMBER[\"World Geodetic System 1984 (Transit)\"],\n        MEMBER[\"World Geodetic System 1984 (G730)\"],\n        MEMBER[\"World Geodetic System 1984 (G873)\"],\n        MEMBER[\"World Geodetic System 1984 (G1150)\"],\n        MEMBER[\"World Geodetic System 1984 (G1674)\"],\n        MEMBER[\"World Geodetic System 1984 (G1762)\"],\n        MEMBER[\"World Geodetic System 1984 (G2139)\"],\n        MEMBER[\"World Geodetic System 1984 (G2296)\"],\n        ELLIPSOID[\"WGS 84\",6378137,298.257223563,\n            LENGTHUNIT[\"metre\",1]],\n        ENSEMBLEACCURACY[2.0]],\n    PRIMEM[\"Greenwich\",0,\n        ANGLEUNIT[\"degree\",0.0174532925199433]],\n    CS[ellipsoidal,2],\n        AXIS[\"geodetic latitude (Lat)\",north,\n            ORDER[1],\n            ANGLEUNIT[\"degree\",0.0174532925199433]],\n        AXIS[\"geodetic longitude (Lon)\",east,\n            ORDER[2],\n            ANGLEUNIT[\"degree\",0.0174532925199433]],\n    USAGE[\n        SCOPE[\"Horizontal component of 3D system.\"],\n        AREA[\"World.\"],\n        BBOX[-90,-180,90,180]],\n    ID[\"EPSG\",4326]]"</code></pre>
 </div>
+</div>
+<p>No estudo de caso, estamos trabalhando apenas com a América do Sul, portanto, faz sentido utilizarmos apenas um recorte específico.</p>
+<div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Definir e aplicar recorte para a América do Sul</span></span>
 <span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>ext_america <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">ext</span>(<span class="sc">-</span><span class="dv">82</span>, <span class="sc">-</span><span class="dv">34</span>, <span class="sc">-</span><span class="dv">60</span>, <span class="dv">15</span>)</span>
 <span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>tavg_america <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">crop</span>(tavg_mundo, ext_america)</span>
 <span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualizar camada de um mês</span></span>
-<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">plot</span>(tavg_america[[<span class="dv">1</span>]], <span class="at">main =</span> <span class="st">"Temperatura Média - Mês 1"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">plot</span>(tavg_america[[<span class="dv">1</span>]], <span class="at">main =</span> <span class="st">"Janeiro"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="01_worldclim_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="480"></p>
+<p><img src="01_worldclim_files/figure-html/mascara-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="480"></p>
 </figure>
 </div>
 </div>
+</div>
+<p>Finalmente, recomenda-se corrigir a projeção e realizar as operações geoespaciais com os arquivos raster.</p>
+<div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Reprojetar e calcular média</span></span>
 <span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>tavg_america_sirgas <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">project</span>(tavg_america, <span class="st">"EPSG:4674"</span>)</span>
 <span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>tavg_mean <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">app</span>(tavg_america_sirgas, mean)</span>
@@ -256,7 +273,7 @@ attr(,"package")
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="01_worldclim_files/figure-html/unnamed-chunk-3-2.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="480"></p>
+<p><img src="01_worldclim_files/figure-html/projecao-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="480"></p>
 </figure>
 </div>
 </div>
@@ -266,10 +283,10 @@ attr(,"package")
 <span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Salvar o raster dentro da pasta 'raster'</span></span>
 <span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">writeRaster</span>(tavg_mean, <span class="at">filename =</span> <span class="fu">here</span>(<span class="st">"raster"</span>, <span class="st">"tavg_mean.tif"</span>), <span class="at">overwrite =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<hr>
 </section>
 <section id="exemplo-temperatura-máxima-tmax" class="level1">
 <h1>3. Exemplo: Temperatura máxima (tmax)</h1>
+<p>Aqui, realizamos as mesmas operações para obter a temperatura máxima.</p>
 <div class="cell" data-layout-align="center">
 <div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>tmax_mundo <span class="ot">&lt;-</span> geodata<span class="sc">::</span><span class="fu">worldclim_global</span>(<span class="at">var =</span> <span class="st">"tmax"</span>, <span class="at">res =</span> <span class="dv">10</span>, <span class="at">path =</span> <span class="fu">here</span>(<span class="st">"worldclim"</span>))</span>
 <span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">class</span>(tmax_mundo))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -283,27 +300,29 @@ attr(,"package")
 <pre><code>[1] "GEOGCRS[\"WGS 84\",\n    ENSEMBLE[\"World Geodetic System 1984 ensemble\",\n        MEMBER[\"World Geodetic System 1984 (Transit)\"],\n        MEMBER[\"World Geodetic System 1984 (G730)\"],\n        MEMBER[\"World Geodetic System 1984 (G873)\"],\n        MEMBER[\"World Geodetic System 1984 (G1150)\"],\n        MEMBER[\"World Geodetic System 1984 (G1674)\"],\n        MEMBER[\"World Geodetic System 1984 (G1762)\"],\n        MEMBER[\"World Geodetic System 1984 (G2139)\"],\n        MEMBER[\"World Geodetic System 1984 (G2296)\"],\n        ELLIPSOID[\"WGS 84\",6378137,298.257223563,\n            LENGTHUNIT[\"metre\",1]],\n        ENSEMBLEACCURACY[2.0]],\n    PRIMEM[\"Greenwich\",0,\n        ANGLEUNIT[\"degree\",0.0174532925199433]],\n    CS[ellipsoidal,2],\n        AXIS[\"geodetic latitude (Lat)\",north,\n            ORDER[1],\n            ANGLEUNIT[\"degree\",0.0174532925199433]],\n        AXIS[\"geodetic longitude (Lon)\",east,\n            ORDER[2],\n            ANGLEUNIT[\"degree\",0.0174532925199433]],\n    USAGE[\n        SCOPE[\"Horizontal component of 3D system.\"],\n        AREA[\"World.\"],\n        BBOX[-90,-180,90,180]],\n    ID[\"EPSG\",4326]]"</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>tmax_america <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">crop</span>(tmax_mundo, ext_america)</span>
-<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">plot</span>(tmax_america[[<span class="dv">10</span>]], <span class="at">main =</span> <span class="st">"Temperatura Máxima - Mês 10"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">plot</span>(tmax_america[[<span class="dv">10</span>]], <span class="at">main =</span> <span class="st">"Temperatura Máxima: Outubro"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="01_worldclim_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="480"></p>
+<p><img src="01_worldclim_files/figure-html/tmax-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="480"></p>
 </figure>
 </div>
 </div>
 <div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>tmax_america_sirgas <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">project</span>(tmax_america, <span class="st">"EPSG:4674"</span>)</span>
 <span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>tmax_mean <span class="ot">&lt;-</span> terra<span class="sc">::</span><span class="fu">app</span>(tmax_america_sirgas, mean)</span>
-<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">plot</span>(tmax_mean, <span class="at">main =</span> <span class="st">"Temperatura Máxima Anual"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">plot</span>(tmax_mean, <span class="at">main =</span> <span class="st">"Temperatura Máxima Anual Média"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="01_worldclim_files/figure-html/unnamed-chunk-4-2.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="480"></p>
+<p><img src="01_worldclim_files/figure-html/tmax-2.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="480"></p>
 </figure>
 </div>
 </div>
 <div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Salvar</span></span>
 <span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">writeRaster</span>(tmax_mean, <span class="at">filename =</span> <span class="fu">here</span>(<span class="st">"raster"</span>, <span class="st">"tmax_mean.tif"</span>), <span class="at">overwrite =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>No banco de dados <a href="https://www.worldclim.org/">WorldClim</a>, existem diversas variáveis climáticas disponíveis. Surge, então, a pergunta: <strong>será que existe uma maneira de trabalhar com múltiplas variáveis ao mesmo tempo?</strong></p>
+<p>A seguir, apresenta-se um bloco de código que realiza essa tarefa. Com certeza, existem formas mais elegantes e eficientes de implementar essa rotina, mas isso exigiria um pouco mais de criatividade e imaginação.</p>
 <hr>
 </section>
 <section id="automatizando-o-processamento-de-variáveis" class="level1">
@@ -350,7 +369,7 @@ attr(,"package")
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="01_worldclim_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="480"></p>
+<p><img src="01_worldclim_files/figure-html/extr_auto-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="480"></p>
 </figure>
 </div>
 </div>
@@ -363,7 +382,7 @@ attr(,"package")
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="01_worldclim_files/figure-html/unnamed-chunk-5-2.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="480"></p>
+<p><img src="01_worldclim_files/figure-html/extr_auto-2.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="480"></p>
 </figure>
 </div>
 </div>
@@ -376,7 +395,7 @@ attr(,"package")
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="01_worldclim_files/figure-html/unnamed-chunk-5-3.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="480"></p>
+<p><img src="01_worldclim_files/figure-html/extr_auto-3.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="480"></p>
 </figure>
 </div>
 </div>

@@ -21,13 +21,16 @@ par(mar = c(5, 5, 1, 1))
 
 ## Introdução
 
-Este documento apresenta o processo completo para extrair variáveis climáticas a partir de arquivos raster, com base em dados isotópicos (`δ15N`) contendo coordenadas geográficas. Usamos os pacotes `sf` e `terra` para manipulação espacial e `writexl` para exportação.
+Este documento apresenta o processo para extrair variáveis climáticas a partir 
+de arquivos raster, com base em dados isotópicos (`δ15N`) contendo coordenadas 
+geográficas derivados do estudo de Sena-Souza et al. (2020)(https://doi.org/10.1002/ecs2.3223). Usamos os pacotes `sf` e `terra` para manipulação espacial e `writexl` para exportação.
 
 ---
 
 ## 1. Configuração inicial
 
-```{r}
+```{r config}
+
 # Limpar ambiente
 rm(list = ls())      
 gc(reset = TRUE)     
@@ -50,7 +53,7 @@ if(!require(here))install.packages("here", dep = TRUE)
 
 ## 2. Importação de dados isotópicos
 
-```{r}
+```{r importacao}
 # Caminho do arquivo de dados
 dn15_path <- here("dados", "Sena-Souza_soil15n.txt")
 
@@ -61,11 +64,17 @@ dn15 <- read.table(dn15_path, header = TRUE)
 dn15 <- dn15 %>%
   dplyr::filter(!is.na(x) & !is.na(y) & !is.na(d15n.obs))
 
+head(dn15)
+
 ```
 
 ---
 
 ## 3. Conversão para objeto espacial `sf`
+
+Nessa etapa, é importante garantir que os dados estejam na mesma projeção dos 
+arquivos raster, a fim de minimizar os erros durante o processo de extração.
+
 
 ```{r}
 # Converter para objeto sf com CRS SIRGAS 2000 (EPSG:4674)
@@ -80,7 +89,13 @@ plot(dn15_proj[1], pch = 20, col = "black", main = NA, axes = TRUE, graticule = 
 
 ## 4. Carregamento e empilhamento de rasters
 
-```{r}
+Lembre-se de que agora vamos utilizar os arquivos raster gerados na etapa anterior, 
+os quais foram armazenados na pasta **raster**. 
+
+O processo a seguir irá criar um único raster multicamada utilizando a 
+função `rast` do pacote `terra`.
+
+```{r stack}
 # Listar arquivos raster na pasta
 raster_files <- list.files(path = here("raster"), pattern = "\\.tif$", full.names = TRUE)
 
@@ -99,6 +114,15 @@ names(r_stack) <- tools::file_path_sans_ext(basename(raster_files))
 
 ## 5. Projeção e extração dos valores climáticos
 
+Com o raster multicamada obtido, podemos realizar a extração dos valores climáticos de acordo com as coordenadas de interesse. 
+
+A função `extract`, do pacote `terra`, oferece dois métodos para extrair valores em pontos: **“simples”** e **“bilinear”**. 
+
+- No modo **simples**, é retornado o valor da célula raster em que o ponto se encontra.
+- No modo **bilinear**, o valor retornado é uma interpolação bilinear calculada a partir das quatro células raster mais próximas do ponto.
+
+
+
 ```{r}
 # Reprojetar raster se necessário
 if (!sf::st_crs(dn15_proj) == sf::st_crs(r_stack)) {
@@ -106,7 +130,7 @@ if (!sf::st_crs(dn15_proj) == sf::st_crs(r_stack)) {
 }
 
 # Extrair valores
-extracted_values <- terra::extract(r_stack, dn15_proj, method = "simple")
+extracted_values <- terra::extract(r_stack, dn15_proj, method = "bilinear")
 
 # Combinar com dados originais
 dn15_proj <- cbind(dn15_proj, extracted_values[, -1])
@@ -117,7 +141,10 @@ dn15_proj <- cbind(dn15_proj, extracted_values[, -1])
 
 ## 6. Exportação do conjunto final
 
-```{r}
+A etapa final consiste em exportar a planilha de dados e dar início ao processo de modelagem, com a implementação dos modelos estatísticos.
+
+
+```{r exportacao}
 # Extrair coordenadas
 coordinates <- sf::st_coordinates(dn15_proj)
 
